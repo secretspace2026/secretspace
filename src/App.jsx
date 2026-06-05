@@ -136,9 +136,10 @@ function globalCss(T, dark) {
     .desktop-right{display:none !important;}
     .desktop-search{display:none !important;}
     .mobile-search-btn{display:flex !important;}
-    .main-pad{padding:12px 14px 90px !important;}
+    .main-pad{padding:14px 14px calc(80px + env(safe-area-inset-bottom)) !important;}
     .header-h{height:52px !important;}
     .desktop-main-margins{margin-left:0 !important;margin-right:0 !important;}
+    .mobile-fab{display:flex !important;}
 
     @media(min-width:768px){
       .desktop-only{display:flex !important;}
@@ -151,6 +152,7 @@ function globalCss(T, dark) {
       .main-pad{padding:20px 24px 24px !important;}
       .header-h{height:56px !important;}
       .desktop-main-margins{margin-left:220px !important;margin-right:240px !important;}
+      .mobile-fab{display:none !important;}
       body{overflow:auto;}
     }
 
@@ -194,7 +196,7 @@ export default function App() {
       <style>{globalCss(T,dark)}</style>
 
       {/* ── Header ── */}
-      <header className="header-h" style={{position:"sticky",top:0,zIndex:50,borderBottom:`1px solid ${T.border}`,background:T.bg,backdropFilter:"blur(18px)",WebkitBackdropFilter:"blur(18px)",display:"flex",alignItems:"center",padding:"0 16px",gap:12,flexShrink:0}}>
+      <header className="header-h" style={{position:"sticky",top:0,zIndex:50,borderBottom:`1px solid ${T.border}`,background:T.bg,backdropFilter:"blur(18px)",WebkitBackdropFilter:"blur(18px)",display:"flex",alignItems:"center",padding:"0 16px",gap:12,flexShrink:0,position:"relative"}}>
 
         {/* Desktop: wordmark only (no S logo), left side */}
         <div className="desktop-only" style={{display:"flex",alignItems:"center",gap:9,flexShrink:0}}>
@@ -204,7 +206,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Desktop search — centered absolutely so it's always in the middle */}
+        {/* Desktop search — centered absolutely */}
         <div className="desktop-search" style={{position:"absolute",left:"50%",transform:"translateX(-50%)",width:380,display:"flex",alignItems:"center"}}>
           <div style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:T.sub,display:"flex",pointerEvents:"none"}}>
             <I.search/>
@@ -221,15 +223,15 @@ export default function App() {
           )}
         </div>
 
-        {/* Mobile: centered wordmark only */}
-        <div className="mobile-only" style={{position:"absolute",left:0,right:0,display:"flex",justifyContent:"center",alignItems:"center",pointerEvents:"none"}}>
-          <div style={{fontFamily:"'Sora',sans-serif",fontSize:"0.95rem",fontWeight:700,letterSpacing:"-0.02em",color:T.text,lineHeight:1}}>secretspace</div>
-        </div>
-
-        {/* Mobile search icon */}
-        <button className="mobile-search-btn ib" onClick={()=>setMobileSearch(s=>!s)} style={{background:"none",border:"none",color:T.sub,display:"none",marginLeft:"auto",padding:4}}>
+        {/* Mobile left: search icon */}
+        <button className="mobile-search-btn ib" onClick={()=>setMobileSearch(s=>!s)} style={{background:"none",border:"none",color:T.text,display:"none",padding:6,flexShrink:0}}>
           <I.search/>
         </button>
+
+        {/* Mobile center: wordmark absolutely centered */}
+        <div className="mobile-only" style={{position:"absolute",left:0,right:0,display:"flex",justifyContent:"center",alignItems:"center",pointerEvents:"none",zIndex:1}}>
+          <div style={{fontFamily:"'Sora',sans-serif",fontSize:"0.95rem",fontWeight:700,letterSpacing:"-0.02em",color:T.text,lineHeight:1}}>secretspace</div>
+        </div>
 
         {/* Desktop right controls */}
         <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:"auto"}} className="desktop-only">
@@ -249,9 +251,9 @@ export default function App() {
           )}
         </div>
 
-        {/* Mobile: theme toggle — always visible in both modes */}
-        <div className="mobile-only" style={{alignItems:"center",gap:6,flexShrink:0,marginLeft:"auto"}}>
-          <button onClick={()=>setDark(d=>!d)} className="ib" style={{background:T.surface2,border:`1px solid ${T.border}`,borderRadius:8,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",color:T.text}}>
+        {/* Mobile right: theme toggle */}
+        <div className="mobile-only" style={{alignItems:"center",marginLeft:"auto",flexShrink:0}}>
+          <button onClick={()=>setDark(d=>!d)} className="ib" style={{background:T.surface2,border:`1px solid ${T.border}`,borderRadius:8,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",color:T.text}}>
             {dark?<I.sun/>:<I.moon/>}
           </button>
         </div>
@@ -259,12 +261,12 @@ export default function App() {
 
       {/* Mobile search bar expandable */}
       {mobileSearch && (
-        <div className="sd mobile-only" style={{background:T.nav,borderBottom:`1px solid ${T.navBorder}`,padding:"8px 14px",alignItems:"center",gap:8}}>
+        <div className="sd mobile-only" style={{background:T.bg,borderBottom:`1px solid ${T.border}`,padding:"8px 14px",alignItems:"center",gap:8,zIndex:49,width:"100%"}}>
           <div style={{flex:1,position:"relative",display:"flex",alignItems:"center"}}>
             <div style={{position:"absolute",left:11,color:T.sub,display:"flex",pointerEvents:"none"}}><I.search/></div>
-            <input autoFocus value={searchVal} onChange={e=>setSearchVal(e.target.value)} placeholder="Search anything..." style={{width:"100%",background:T.surface2,border:`1.5px solid ${T.border2}`,borderRadius:99,padding:"8px 14px 8px 34px",fontSize:"0.83rem",color:T.text}}/>
+            <input autoFocus value={searchVal} onChange={e=>setSearchVal(e.target.value)} placeholder="Search anything..." style={{width:"100%",background:T.surface2,border:`1.5px solid ${T.border2}`,borderRadius:99,padding:"9px 14px 9px 34px",fontSize:"0.85rem",color:T.text}}/>
           </div>
-          <button onClick={()=>{setMobileSearch(false);setSearchVal("");}} style={{background:"none",border:"none",color:T.sub,fontSize:"0.78rem",fontWeight:500,flexShrink:0}}>Cancel</button>
+          <button onClick={()=>{setMobileSearch(false);setSearchVal("");}} style={{background:"none",border:"none",color:T.sub,fontSize:"0.78rem",fontWeight:500,flexShrink:0,padding:"4px 2px"}}>Cancel</button>
         </div>
       )}
 
@@ -318,17 +320,17 @@ export default function App() {
       </div>
 
       {/* ── Mobile Bottom Nav ── */}
-      <nav className="mobile-nav" style={{position:"fixed",bottom:0,left:0,right:0,zIndex:50,background:T.nav,backdropFilter:"blur(18px)",WebkitBackdropFilter:"blur(18px)",borderTop:`1px solid ${T.navBorder}`,justifyContent:"space-around",padding:"6px 0 calc(6px + env(safe-area-inset-bottom))",flexShrink:0}}>
+      <nav className="mobile-nav" style={{position:"fixed",bottom:0,left:0,right:0,zIndex:50,background:T.bg,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderTop:`1px solid ${T.border}`,justifyContent:"space-around",alignItems:"center",padding:`8px 0 calc(8px + env(safe-area-inset-bottom))`,flexShrink:0,minHeight:56}}>
         {NAV_ITEMS.map(({id,label,Icon})=>(
-          <button key={id} onClick={()=>setTab(id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"none",border:"none",color:tab===id?T.text:T.sub,padding:"4px 12px",borderRadius:8,minWidth:60}}>
+          <button key={id} onClick={()=>setTab(id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,background:"none",border:"none",color:tab===id?T.text:T.sub,padding:"4px 16px",borderRadius:10,minWidth:56,flex:1,maxWidth:90}}>
             <Icon active={tab===id}/>
-            <span style={{fontSize:"0.6rem",fontWeight:tab===id?600:400,letterSpacing:"0.01em"}}>{label}</span>
+            <span style={{fontSize:"0.58rem",fontWeight:tab===id?600:400,letterSpacing:"0.02em"}}>{label}</span>
           </button>
         ))}
       </nav>
 
       {/* Mobile FAB */}
-      <button className="mobile-only" onClick={()=>setModal("confess")} style={{position:"fixed",bottom:70,right:16,zIndex:49,background:T.accent,border:"none",borderRadius:14,width:46,height:46,display:"none",alignItems:"center",justifyContent:"center",color:T.accentText,boxShadow:`0 4px 20px rgba(0,0,0,${dark?0.5:0.18})`}}>
+      <button className="mobile-fab" onClick={()=>setModal("confess")} style={{position:"fixed",bottom:"calc(70px + env(safe-area-inset-bottom))",right:18,zIndex:49,background:T.accent,border:"none",borderRadius:16,width:50,height:50,alignItems:"center",justifyContent:"center",color:T.accentText,boxShadow:`0 4px 24px rgba(0,0,0,${dark?0.55:0.2})`}}>
         <I.plus/>
       </button>
 
@@ -433,7 +435,7 @@ function RoomsView({T,rooms,msgs,sendMsg,user,guestId,setModal,activeRoom,setAct
     const roomMsgs = msgs[activeRoom.id]||[];
     const me = user?.name||guestId;
     return (
-      <div style={{display:"flex",flexDirection:"column",height:"calc(100dvh - 120px)"}}>
+      <div style={{display:"flex",flexDirection:"column",height:"calc(100dvh - 130px)"}}>
         <div style={{display:"flex",alignItems:"center",gap:10,paddingBottom:12,marginBottom:12,borderBottom:`1px solid ${T.border}`,flexShrink:0}}>
           <button onClick={()=>setActiveRoom(null)} className="ib" style={{background:T.surface2,border:`1px solid ${T.border}`,borderRadius:7,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",color:T.sub,flexShrink:0}}>
             <I.back/>
