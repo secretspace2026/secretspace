@@ -159,9 +159,9 @@ function globalCss(T, dark) {
       .mobile-search-btn{display:none !important;}
       .main-pad{padding:20px 24px 24px !important;}
       .header-h{height:56px !important;}
-      .desktop-main-margins{margin-left:220px !important;margin-right:240px !important;}
+      .desktop-main-margins{margin-left:220px !important;margin-right:240px !important;height:calc(100vh - 56px) !important;overflow-y:auto !important;overflow-x:hidden !important;}
       .mobile-fab{display:none !important;}
-      body{overflow:auto;}
+      html,body,#root,#app{height:100vh !important;overflow:hidden !important;}
     }
 
     @media(max-width:767px){
