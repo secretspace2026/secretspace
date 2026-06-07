@@ -28,7 +28,13 @@ const I = {
   eyeOff:    () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>,
   chevR:     () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>,
   trending:  () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
-  goldCheck: () => <span title="SecretSpace Premium" style={{width:15,height:15,borderRadius:"50%",background:"linear-gradient(135deg,#f7d046,#b7791f)",color:"#241300",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:"0.62rem",fontWeight:900,lineHeight:1,boxShadow:"0 0 0 1px rgba(247,208,70,0.5)"}}>âœ“</span>,
+  goldCheck: () => (
+    <svg title="SecretSpace Premium" width="16" height="16" viewBox="0 0 24 24" style={{display:"inline-block",flexShrink:0,filter:"drop-shadow(0 1px 3px rgba(214,166,32,0.35))"}}>
+      <circle cx="12" cy="12" r="10" fill="#d6a620"/>
+      <circle cx="12" cy="12" r="7.5" fill="none" stroke="#ffe58a" strokeWidth="1.2" opacity="0.9"/>
+      <path d="M7.2 12.2l3 3 6.5-7" fill="none" stroke="#1b1200" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
   settings:  () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
   search:    () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
   back:      () => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>,
@@ -459,7 +465,8 @@ function RoomsView({T,rooms,msgs,sendMsg,user,guestId,setModal,activeRoom,setAct
     const roomMsgs = msgs[activeRoom.id]||[];
     const me = user?.name||guestId;
     return (
-      <div style={{display:"flex",flexDirection:"column",height:"calc(100dvh - 120px)"}}>
+      <div style={{display:"flex",flexDirection:"column",height:"calc(100dvh - 88px)"}}>
+        <style>{`@media(max-width:767px){.mobile-nav{display:none !important;}.main-pad{padding-bottom:14px !important;}}`}</style>
         <div style={{display:"flex",alignItems:"center",gap:10,paddingBottom:12,marginBottom:12,borderBottom:`1px solid ${T.border}`,flexShrink:0}}>
           <button onClick={()=>setActiveRoom(null)} className="ib" style={{background:T.surface2,border:`1px solid ${T.border}`,borderRadius:7,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",color:T.sub,flexShrink:0}}>
             <I.back/>
@@ -571,12 +578,12 @@ function AccountView({T,user,guestId,setModal,onUpgrade}) {
           <div style={{fontSize:"1rem",fontWeight:800,color:"#d6a620"}}>49/month</div>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:6,margin:"10px 0 14px"}}>
-          {["Golden tickmark on your account name","Only premium accounts can create rooms","Confessions get priority and up to 2x views","More premium features ready for Razorpay"].map(x=>(
+          {["Golden tickmark on your account name","Only premium accounts can create rooms","Confessions get priority and up to 2x views"].map(x=>(
             <div key={x} style={{fontSize:"0.76rem",color:T.sub,display:"flex",alignItems:"center",gap:7}}><span style={{color:"#d6a620",fontWeight:900}}>•</span>{x}</div>
           ))}
         </div>
         <button onClick={user?onUpgrade:()=>setModal("signup")} disabled={isPremium} style={{width:"100%",background:isPremium?T.surface2:"#d6a620",border:isPremium?`1px solid ${T.border}`:"none",borderRadius:9,padding:"10px 0",fontSize:"0.84rem",fontWeight:700,color:isPremium?T.sub:"#1b1200",cursor:isPremium?"default":"pointer"}}>
-          {isPremium?"Premium Active":"Upgrade with Razorpay"}
+          {isPremium?"Premium Active":"Upgrade"}
         </button>
       </div>
     </div>
@@ -610,7 +617,8 @@ function FriendsView({T}) {
   if(activeFriend) {
     const msgs = friendMsgs[activeFriend.id]||[];
     return (
-      <div style={{display:"flex",flexDirection:"column",height:"calc(100dvh - 120px)"}}>
+      <div style={{display:"flex",flexDirection:"column",height:"calc(100dvh - 88px)"}}>
+        <style>{`@media(max-width:767px){.mobile-nav{display:none !important;}.main-pad{padding-bottom:14px !important;}}`}</style>
         <div style={{display:"flex",alignItems:"center",gap:10,paddingBottom:12,marginBottom:12,borderBottom:`1px solid ${T.border}`,flexShrink:0}}>
           <button onClick={()=>setActiveFriend(null)} className="ib" style={{background:T.surface2,border:`1px solid ${T.border}`,borderRadius:7,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",color:T.sub,flexShrink:0}}><I.back/></button>
           <div style={{position:"relative",flexShrink:0}}>
