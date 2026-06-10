@@ -4,8 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 // ─── ⚙️  SUPABASE CONFIG — Replace with YOUR values from supabase.com ──────
 // Step 1: Go to https://supabase.com → your project → Settings → API
 // Step 2: Copy "Project URL" and "anon public" key and paste below
-const SUPABASE_URL = "https://apkeaqbejhdnkitnfovv.supabase.co";   // e.g. "https://abcdefgh.supabase.co"
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwa2VhcWJlamhkbmtpdG5mb3Z2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzY4MDMsImV4cCI6MjA5NjI1MjgwM30.TxQ2JmGDoeIW82ZnpDdKU6BztmcSXtZ0dzQGzf95_HU";      // e.g. "eyJhbGciOiJIUzI1Ni..."
+const SUPABASE_URL = "https://daysjeiedllvwnonnxbu.supabase.co";   // e.g. "https://abcdefgh.supabase.co"
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRheXNqZWllZGxsdndub25ueGJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODY1OTMsImV4cCI6MjA5NjY2MjU5M30.ocMwZGnUpFADaeO6kY3tau2z4m5ov7zFaoqpjkZ-xv0";      // e.g. "eyJhbGciOiJIUzI1Ni..."
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 // ─────────────────────────────────────────────────────────────────────────────
 
