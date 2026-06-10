@@ -1,4 +1,14 @@
 import { useState, useRef, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// ─── ⚙️  SUPABASE CONFIG — Replace with YOUR values from supabase.com ──────
+// Step 1: Go to https://supabase.com → your project → Settings → API
+// Step 2: Copy "Project URL" and "anon public" key and paste below
+const SUPABASE_URL = "https://apkeaqbejhdnkitnfovv.supabase.co";   // e.g. "https://abcdefgh.supabase.co"
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwa2VhcWJlamhkbmtpdG5mb3Z2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzY4MDMsImV4cCI6MjA5NjI1MjgwM30.TxQ2JmGDoeIW82ZnpDdKU6BztmcSXtZ0dzQGzf95_HU";      // e.g. "eyJhbGciOiJIUzI1Ni..."
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+// ─────────────────────────────────────────────────────────────────────────────
+
 
 // â”€â”€â”€ SVG Icons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const I = {
@@ -242,9 +252,9 @@ function globalCss(T, dark) {
 export default function App() {
   const [dark,setDark]             = useState(true);
   const [tab,setTab]               = useState("feed");
-  const [posts,setPosts]           = useState(SEED_POSTS);
-  const [rooms,setRooms]           = useState(SEED_ROOMS);
-  const [msgs,setMsgs]             = useState(SEED_MSGS);
+  const [posts,setPosts]           = useState([]);
+  const [rooms,setRooms]           = useState(SEED_ROOMS); // Default rooms still shown initially
+  const [msgs,setMsgs]             = useState({});
   const [modal,setModal]           = useState(null);
   const [user,setUser]             = useState(null);
   const [guestId]                  = useState(genId);
@@ -253,41 +263,236 @@ export default function App() {
   const [searchVal,setSearchVal]   = useState("");
   const [privacyScreen,setPrivacyScreen] = useState(false);
   const [captureWarning,setCaptureWarning] = useState(false);
-  const [toast,setToast] = useState(null);
+  const [toast,setToast]   = useState(null);
+  const [loading,setLoading] = useState(true);
   const T = dark ? DARK : LIGHT;
   const me = user?.name || guestId;
 
   const showToast = msg => setToast(msg);
 
-  const toggleHeart = id => setPosts(p=>p.map(c=>c.id===id?{...c,hearts:c.hearts+(c.liked?-1:1),liked:!c.liked}:c));
-  const addPost     = async (text,cat)=>{
-    const enc = await encryptText(text);
-    setPosts(p=>[{id:uid(),author:me,owner:me,text:enc,plain:text,cat,hearts:0,liked:false,ts:Date.now(),comments:0,encrypted:true},...p]);
-    setModal(null);
-    showToast("Confession posted — end-to-end encrypted");
+  // ─── Load posts from Supabase on startup ────────────────────────────────
+  useEffect(() => {
+    async function loadPosts() {
+      setLoading(true);
+      const { data, error } = await db
+        .from("posts")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) { console.error("Error loading posts:", error); setLoading(false); return; }
+      const mapped = (data || []).map(p => ({
+        id: p.id,
+        author: p.author,
+        owner: p.author,
+        text: p.text,
+        plain: p.text,
+        cat: p.category,
+        hearts: p.hearts,
+        liked: false,
+        ts: new Date(p.created_at).getTime(),
+        comments: 0,
+        encrypted: false,
+      }));
+      setPosts(mapped);
+      setLoading(false);
+    }
+    loadPosts();
+  }, []);
+
+  // ─── Load rooms from Supabase on startup ────────────────────────────────
+  useEffect(() => {
+    async function loadRooms() {
+      const { data, error } = await db
+        .from("rooms")
+        .select("*")
+        .order("created_at", { ascending: true });
+      if (error) { console.error("Error loading rooms:", error); return; }
+      const mapped = (data || []).map(r => ({
+        id: r.id, name: r.name, desc: r.description,
+        members: r.members, type: r.type, active: r.active, owner: r.owner,
+      }));
+      setRooms(mapped);
+    }
+    loadRooms();
+  }, []);
+
+  // ─── Realtime: new posts appear instantly ───────────────────────────────
+  useEffect(() => {
+    const channel = db.channel("public:posts")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, payload => {
+        const p = payload.new;
+        const newPost = {
+          id: p.id, author: p.author, owner: p.author, text: p.text, plain: p.text,
+          cat: p.category, hearts: p.hearts, liked: false,
+          ts: new Date(p.created_at).getTime(), comments: 0, encrypted: false,
+        };
+        setPosts(prev => {
+          if (prev.find(x => x.id === newPost.id)) return prev; // avoid duplicate
+          return [newPost, ...prev];
+        });
+      })
+      .subscribe();
+    return () => { db.removeChannel(channel); };
+  }, []);
+
+  // ─── Realtime: new chat messages appear instantly ───────────────────────
+  useEffect(() => {
+    const channel = db.channel("public:messages")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, payload => {
+        const m = payload.new;
+        setMsgs(prev => ({
+          ...prev,
+          [m.room_id]: [
+            ...(prev[m.room_id] || []),
+            { id: m.id, from: m.sender, text: m.text, plain: m.text, ts: new Date(m.created_at).getTime() },
+          ],
+        }));
+      })
+      .subscribe();
+    return () => { db.removeChannel(channel); };
+  }, []);
+
+  // ─── Load messages for a room when user enters it ───────────────────────
+  useEffect(() => {
+    if (!activeRoom) return;
+    async function loadMessages() {
+      const { data, error } = await db
+        .from("messages")
+        .select("*")
+        .eq("room_id", activeRoom.id)
+        .order("created_at", { ascending: true })
+        .limit(100);
+      if (error) { console.error("Error loading messages:", error); return; }
+      const mapped = (data || []).map(m => ({
+        id: m.id, from: m.sender, text: m.text, plain: m.text,
+        ts: new Date(m.created_at).getTime(),
+      }));
+      setMsgs(prev => ({ ...prev, [activeRoom.id]: mapped }));
+    }
+    loadMessages();
+  }, [activeRoom]);
+
+  // ─── Toggle heart (like/unlike) ─────────────────────────────────────────
+  const toggleHeart = async (id) => {
+    const post = posts.find(p => p.id === id);
+    if (!post) return;
+    const newLiked = !post.liked;
+    const newCount = post.hearts + (newLiked ? 1 : -1);
+    // Optimistic UI update
+    setPosts(p => p.map(c => c.id === id ? { ...c, hearts: newCount, liked: newLiked } : c));
+    // Save to Supabase
+    if (newLiked) {
+      await db.from("likes").insert({ post_id: id, user_identifier: me });
+    } else {
+      await db.from("likes").delete().eq("post_id", id).eq("user_identifier", me);
+    }
+    await db.from("posts").update({ hearts: newCount }).eq("id", id);
   };
-  const deletePost  = id => { setPosts(p=>p.filter(c=>c.id!==id)); showToast("Confession deleted"); };
-  const addRoom     = (r)=>{
-    const owned = rooms.filter(x=>x.owner===me).length;
+
+  // ─── Add post (confession) ───────────────────────────────────────────────
+  const addPost = async (text, cat) => {
+    const { data, error } = await db
+      .from("posts")
+      .insert({ author: me, text: text, category: cat, hearts: 0 })
+      .select()
+      .single();
+    if (error) { showToast("Error posting confession"); console.error(error); return; }
+    // Realtime will add it, but add locally too as fallback
+    setPosts(p => {
+      if (p.find(x => x.id === data.id)) return p;
+      return [{ id: data.id, author: me, owner: me, text, plain: text, cat, hearts: 0, liked: false, ts: Date.now(), comments: 0 }, ...p];
+    });
+    setModal(null);
+    showToast("Confession posted ✓");
+  };
+
+  // ─── Delete post ─────────────────────────────────────────────────────────
+  const deletePost = async (id) => {
+    setPosts(p => p.filter(c => c.id !== id));
+    await db.from("posts").delete().eq("id", id);
+    showToast("Confession deleted");
+  };
+
+  // ─── Add room ────────────────────────────────────────────────────────────
+  const addRoom = async (r) => {
+    const owned = rooms.filter(x => x.owner === me).length;
     if (owned >= MAX_PREMIUM_ROOMS) { showToast("Premium limit: 1 room per account"); return; }
-    setRooms(p=>[{...r,owner:me},...p]);
-    setMsgs(m=>({...m,[r.id]:[]}));
+    const { error } = await db.from("rooms").insert({
+      id: r.id, name: r.name, description: r.desc || "A new room",
+      type: r.type, members: 1, owner: me, active: true,
+    });
+    if (error) { showToast("Error creating room"); console.error(error); return; }
+    setRooms(p => [{ ...r, owner: me }, ...p]);
+    setMsgs(m => ({ ...m, [r.id]: [] }));
     setModal(null);
     showToast("Room created!");
   };
-  const deleteRoom  = id => {
-    setRooms(p=>p.filter(r=>r.id!==id));
-    setMsgs(m=>{ const n={...m}; delete n[id]; return n; });
-    if (activeRoom?.id===id) setActiveRoom(null);
+
+  // ─── Delete room ─────────────────────────────────────────────────────────
+  const deleteRoom = async (id) => {
+    setRooms(p => p.filter(r => r.id !== id));
+    setMsgs(m => { const n = { ...m }; delete n[id]; return n; });
+    if (activeRoom?.id === id) setActiveRoom(null);
+    await db.from("rooms").delete().eq("id", id);
     showToast("Room deleted");
   };
-  const sendMsg     = async (roomId,text)=>{
-    const enc = await encryptText(text);
-    setMsgs(p=>({...p,[roomId]:[...(p[roomId]||[]),{id:uid(),from:me,text:enc,plain:text,ts:Date.now(),encrypted:true}]}));
+
+  // ─── Send message ────────────────────────────────────────────────────────
+  const sendMsg = async (roomId, text) => {
+    const { data, error } = await db
+      .from("messages")
+      .insert({ room_id: roomId, sender: me, text: text })
+      .select()
+      .single();
+    if (error) { showToast("Error sending message"); console.error(error); return; }
+    // Add locally as fallback (realtime may add it too, deduplicated by id)
+    setMsgs(prev => {
+      const existing = prev[roomId] || [];
+      if (existing.find(m => m.id === data.id)) return prev;
+      return { ...prev, [roomId]: [...existing, { id: data.id, from: me, text, plain: text, ts: Date.now() }] };
+    });
   };
-  const signUp      = (name)=>{ setUser({name,id:genId(),joined:Date.now(),subscribed:false}); setModal(null); };
-  const signIn      = (name)=>{ setUser({name,id:genId(),joined:Date.now(),subscribed:false}); setModal(null); };
-  const upgradeUser = ()=>setUser(u=>u?{...u,subscribed:true}:u);
+
+  // ─── Sign up (create real account in Supabase) ───────────────────────────
+  const signUp = async (name) => {
+    const username = name.trim() || genId();
+    // Check if username already taken
+    const { data: existing } = await db.from("users").select("id").eq("username", username).single();
+    if (existing) { showToast("Username taken, try another"); return; }
+    const { error } = await db.from("users").insert({ username, password_hash: "set_later" });
+    if (error) { showToast("Error creating account"); console.error(error); return; }
+    setUser({ name: username, id: genId(), joined: Date.now(), subscribed: false });
+    // Save to localStorage so they stay logged in
+    localStorage.setItem("ss_user", JSON.stringify({ name: username, joined: Date.now(), subscribed: false }));
+    setModal(null);
+    showToast("Account created! Welcome.");
+  };
+
+  // ─── Sign in ─────────────────────────────────────────────────────────────
+  const signIn = async (name) => {
+    const { data, error } = await db.from("users").select("*").eq("username", name.trim()).single();
+    if (error || !data) { showToast("Account not found"); return; }
+    setUser({ name: data.username, id: data.id, joined: new Date(data.created_at).getTime(), subscribed: data.subscribed });
+    localStorage.setItem("ss_user", JSON.stringify({ name: data.username, joined: new Date(data.created_at).getTime(), subscribed: data.subscribed }));
+    setModal(null);
+    showToast(`Welcome back, ${data.username.split("_")[0]}!`);
+  };
+
+  // ─── Restore session from localStorage on page load ─────────────────────
+  useEffect(() => {
+    const saved = localStorage.getItem("ss_user");
+    if (saved) {
+      try { setUser(JSON.parse(saved)); } catch {}
+    }
+  }, []);
+  const upgradeUser = async () => {
+    setUser(u => u ? { ...u, subscribed: true } : u);
+    if (user?.name) {
+      await db.from("users").update({ subscribed: true }).eq("username", user.name);
+      const saved = localStorage.getItem("ss_user");
+      if (saved) { try { localStorage.setItem("ss_user", JSON.stringify({ ...JSON.parse(saved), subscribed: true })); } catch {} }
+    }
+  };
   const ownedRooms  = rooms.filter(r=>r.owner===me);
   const myPosts     = posts.filter(p=>p.owner===me);
 
@@ -463,7 +668,7 @@ export default function App() {
         {/* Center â€” offset by sidebar widths so it doesn't go under fixed panels */}
         <main className="desktop-main-margins" style={{flex:1,minWidth:0,display:"flex",WebkitOverflowScrolling:"touch"}}>
           <div className="main-pad" style={{flex:1,width:"100%",boxSizing:"border-box"}}>
-            {tab==="feed"    && <FeedView    T={T} posts={posts} toggleHeart={toggleHeart} setModal={setModal} user={user} guestId={guestId} me={me} onDelete={deletePost} onShare={(id,label)=>shareLink("confession",id,label)}/>}
+            {tab==="feed"    && <FeedView    T={T} posts={posts} toggleHeart={toggleHeart} setModal={setModal} user={user} guestId={guestId} me={me} onDelete={deletePost} onShare={(id,label)=>shareLink("confession",id,label)} loading={loading}/> }
             {tab==="rooms"   && <RoomsView   T={T} rooms={rooms} msgs={msgs} sendMsg={sendMsg} user={user} guestId={guestId} me={me} setModal={setModal} activeRoom={activeRoom} setActiveRoom={setActiveRoom} onDeleteRoom={deleteRoom} onShareRoom={(id,name)=>shareLink("room",id,name)} ownedCount={ownedRooms.length} maxRooms={MAX_PREMIUM_ROOMS}/>}
             {tab==="myspace" && <MySpaceView T={T} posts={myPosts} rooms={ownedRooms} me={me} setTab={setTab} setActiveRoom={setActiveRoom} onDeletePost={deletePost} onDeleteRoom={deleteRoom} onSharePost={(id)=>shareLink("confession",id,"")} onShareRoom={(id,name)=>shareLink("room",id,name)} setModal={setModal} user={user} maxRooms={MAX_PREMIUM_ROOMS}/>}
             {tab==="account" && <AccountView T={T} user={user} guestId={guestId} setModal={setModal} onUpgrade={upgradeUser}/>}
@@ -503,14 +708,14 @@ export default function App() {
           {/* Desktop: centered modal */}
           <div className="desktop-only" onClick={()=>setModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(6px)",zIndex:100,alignItems:"center",justifyContent:"center",padding:16}}>
             <div onClick={e=>e.stopPropagation()} className="min" style={{background:T.surface,border:`1px solid ${T.border2}`,borderRadius:14,width:"100%",maxWidth:420,padding:"24px",boxShadow:`0 20px 60px rgba(0,0,0,0.35)`}}>
-              <ModalContent modal={modal} T={T} setModal={setModal} user={user} guestId={guestId} addPost={addPost} addRoom={addRoom} signUp={signUp} signIn={signIn} onSignOut={()=>{setUser(null);setModal(null);}} ownedRooms={ownedRooms.length} maxRooms={MAX_PREMIUM_ROOMS}/>
+              <ModalContent modal={modal} T={T} setModal={setModal} user={user} guestId={guestId} addPost={addPost} addRoom={addRoom} signUp={signUp} signIn={signIn} onSignOut={()=>{setUser(null);localStorage.removeItem("ss_user");setModal(null);}} ownedRooms={ownedRooms.length} maxRooms={MAX_PREMIUM_ROOMS}/>
             </div>
           </div>
           {/* Mobile: bottom sheet */}
           <div className="mobile-only" onClick={()=>setModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(4px)",zIndex:100,alignItems:"flex-end",justifyContent:"center"}}>
             <div onClick={e=>e.stopPropagation()} className="sheet" style={{width:"100%",background:T.surface,borderRadius:"18px 18px 0 0",padding:"20px 18px calc(28px + env(safe-area-inset-bottom))",boxShadow:"0 -8px 40px rgba(0,0,0,0.3)"}}>
               <div style={{width:34,height:3,background:T.border2,borderRadius:99,margin:"0 auto 18px"}}/>
-              <ModalContent modal={modal} T={T} setModal={setModal} user={user} guestId={guestId} addPost={addPost} addRoom={addRoom} signUp={signUp} signIn={signIn} onSignOut={()=>{setUser(null);setModal(null);}} ownedRooms={ownedRooms.length} maxRooms={MAX_PREMIUM_ROOMS}/>
+              <ModalContent modal={modal} T={T} setModal={setModal} user={user} guestId={guestId} addPost={addPost} addRoom={addRoom} signUp={signUp} signIn={signIn} onSignOut={()=>{setUser(null);localStorage.removeItem("ss_user");setModal(null);}} ownedRooms={ownedRooms.length} maxRooms={MAX_PREMIUM_ROOMS}/>
             </div>
           </div>
         </>
@@ -548,11 +753,16 @@ function ActionBtn({T,onClick,children,title,danger}) {
 }
 
 // â”€â”€â”€ Feed View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function FeedView({T,posts,toggleHeart,setModal,user,guestId,me,onDelete,onShare}) {
+function FeedView({T,posts,toggleHeart,setModal,user,guestId,me,onDelete,onShare,loading}) {
   const [cat,setCat] = useState("All");
   const filtered = cat==="All"?posts:posts.filter(p=>p.cat===cat);
   return (
     <div style={{width:"100%",minWidth:0}}>
+      {loading && (
+        <div style={{textAlign:"center",padding:"40px 0",color:T.sub,fontSize:"0.85rem"}}>
+          Loading confessions...
+        </div>
+      )}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,gap:8}}>
         <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"1.45rem",fontWeight:600,color:T.text,flexShrink:0}}>Confessions</h2>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
